@@ -1,50 +1,62 @@
-# Apileon Framework Documentation
+# Apileon Framework - Developer Documentation
 
-## Table of Contents
+## 📚 Table of Contents
 
-1. [Getting Started](#getting-started)
-2. [Installation](#installation)
-3. [Configuration](#configuration)
-4. [Routing](#routing)
-5. [Controllers](#controllers)
-6. [Models](#models)
-7. [Middleware](#middleware)
-8. [Request & Response](#request--response)
-9. [Error Handling](#error-handling)
-10. [Testing](#testing)
-11. [Deployment](#deployment)
-12. [Best Practices](#best-practices)
+📖 **Developer Resources:**
+- [🛠️ Developer Guide](DEVELOPER_GUIDE.md) - Complete guide with do's and don'ts
+- [🔍 Quick Reference](QUICK_REFERENCE.md) - "Where do I put...?" answers
+
+**Framework Documentation:**
+1. [🚀 Getting Started](#-getting-started)
+2. [⚙️ Installation](#️-installation)
+3. [🔧 Configuration](#-configuration)
+4. [🛤️ Routing](#️-routing)
+5. [🎮 Controllers](#-controllers)
+6. [📊 Models & Database](#-models--database)
+7. [🔐 Middleware](#-middleware)
+8. [💾 Caching](#-caching)
+9. [🎯 Events](#-events)
+10. [📈 Performance Monitoring](#-performance-monitoring)
+11. [📨 Request & Response](#-request--response)
+12. [❌ Error Handling](#-error-handling)
+13. [🧪 Testing](#-testing)
+14. [🚀 Deployment](#-deployment)
+15. [✅ Best Practices](#-best-practices)
+16. [❌ Common Mistakes](#-common-mistakes)
 
 ---
 
-## Getting Started
+## 🚀 Getting Started
 
-Apileon is a lightweight PHP framework designed exclusively for REST API development. It provides a clean, simple API while maintaining enterprise-level capabilities.
+Apileon is a lightweight PHP framework designed exclusively for REST API development with enterprise-grade features including built-in performance monitoring, caching, and event systems.
 
-### Key Principles
+### 🎯 Framework Philosophy
 
-- **API-First**: Built exclusively for REST APIs, no unnecessary features
+- **API-First**: Built exclusively for REST APIs, no web UI bloat
 - **Zero Dependencies**: Works with just PHP 8.1+, Composer optional
-- **Developer Friendly**: Intuitive syntax and comprehensive documentation
-- **Enterprise Ready**: Security, testing, and scalability built-in
+- **Developer Friendly**: Intuitive syntax with comprehensive error messages
+- **Enterprise Ready**: Security, performance monitoring, caching, and testing built-in
+- **Production Optimized**: Built-in health checks, metrics, and monitoring
 
-### Requirements
+### 📋 Requirements
 
-- **PHP 8.1 or higher**
+- **PHP 8.1 or higher** (Required)
 - **Web server** (Apache, Nginx, or PHP built-in server)
-- **Composer** (optional - framework includes manual autoloader)
+- **Composer** (Optional - framework includes manual autoloader)
+- **SQLite/MySQL/PostgreSQL** (Optional - for database features)
 
-### Quick Setup
+### ⚡ Quick Start (30 seconds)
 
 ```bash
-# Option 1: With Composer
-composer create-project apileon/framework my-api
-
-# Option 2: Without Composer (just PHP!)
+# 🚀 Zero Dependencies Setup
 git clone https://github.com/bandeto45/apileon.git my-api
 cd my-api
 ./setup-no-composer.sh
 php -S localhost:8000 -t public
+
+# Test your API
+curl http://localhost:8000/hello
+# Response: {"message":"Hello from Apileon!"}
 ```
 
 ---
@@ -160,6 +172,8 @@ $dbHost = config('database.connections.mysql.host');
 ---
 
 ## Routing
+
+> **🎯 Need detailed guidance on where to put your code?** See our comprehensive [Developer Guide](DEVELOPER_GUIDE.md) with do's and don'ts, practical examples, and best practices!
 
 ### Basic Routing
 
@@ -739,7 +753,9 @@ composer require illuminate/database
 composer require doctrine/orm
 ```
 
-## Best Practices
+## ✅ **Best Practices** {#-best-practices}
+
+> **📖 For comprehensive development guidance including where to add your functions, do's and don'ts, and practical examples, see our detailed [Developer Guide](DEVELOPER_GUIDE.md)!**
 
 ### 1. Project Organization
 
@@ -1110,5 +1126,193 @@ class SecurityHeadersMiddleware extends Middleware
     }
 }
 ```
+
+---
+
+## ❌ **Common Mistakes** {#-common-mistakes}
+
+> **🚨 For detailed anti-patterns and how to avoid them, see our [Developer Guide](DEVELOPER_GUIDE.md) with comprehensive do's and don'ts!**
+
+### **1. Architecture Mistakes**
+
+#### ❌ **Putting Business Logic in Controllers**
+```php
+// BAD: Complex logic in controller
+public function calculatePrice(Request $request): Response
+{
+    $product = Product::find($request->param('id'));
+    $price = $product->base_price;
+    
+    // 50 lines of complex pricing logic here...
+    if ($user->isVip()) {
+        $price *= 0.9;
+    }
+    // More complex calculations...
+    
+    return Response::json(['price' => $price]);
+}
+```
+
+#### ✅ **Move to Model or Service**
+```php
+// GOOD: Clean controller, logic in model
+public function calculatePrice(Request $request): Response
+{
+    $product = Product::find($request->param('id'));
+    $price = $product->calculatePrice($request->user());
+    
+    return success_response(['price' => $price]);
+}
+```
+
+### **2. Security Mistakes**
+
+#### ❌ **Not Validating Input**
+```php
+// BAD: Direct database insertion
+public function store(Request $request): Response
+{
+    // Dangerous! No validation
+    Product::create($request->all());
+}
+```
+
+#### ✅ **Always Validate**
+```php
+// GOOD: Proper validation
+public function store(Request $request): Response
+{
+    $validatedData = Product::validateForCreation($request->all());
+    $product = Product::create($validatedData);
+    
+    return success_response($product->toArray(), 'Product created', 201);
+}
+```
+
+### **3. Performance Mistakes**
+
+#### ❌ **Not Using Caching**
+```php
+// BAD: Expensive operation on every request
+public function dashboard(): Response
+{
+    $stats = [
+        'total_users' => User::count(),
+        'total_products' => Product::count(),
+        'revenue' => Order::sum('total'),
+        'popular_products' => Product::orderBy('views', 'DESC')->limit(10)->get()
+    ];
+    
+    return success_response($stats);
+}
+```
+
+#### ✅ **Use Caching for Expensive Operations**
+```php
+// GOOD: Cache expensive computations
+public function dashboard(): Response
+{
+    $stats = cache_remember('dashboard_stats', function() {
+        return [
+            'total_users' => User::count(),
+            'total_products' => Product::count(),
+            'revenue' => Order::sum('total'),
+            'popular_products' => Product::orderBy('views', 'DESC')->limit(10)->get()
+        ];
+    }, 300); // Cache for 5 minutes
+    
+    return success_response($stats);
+}
+```
+
+### **4. Database Mistakes**
+
+#### ❌ **No Pagination**
+```php
+// BAD: Could return millions of records
+public function index(): Response
+{
+    return success_response(Product::all());
+}
+```
+
+#### ✅ **Always Paginate Large Datasets**
+```php
+// GOOD: Paginated results
+public function index(Request $request): Response
+{
+    $page = max(1, (int) $request->query('page', 1));
+    $perPage = min(50, max(1, (int) $request->query('per_page', 10)));
+    
+    $products = Product::paginate($perPage, $page);
+    
+    return success_response($products);
+}
+```
+
+### **5. Error Handling Mistakes**
+
+#### ❌ **No Error Handling**
+```php
+// BAD: Errors will crash the application
+public function show(Request $request): Response
+{
+    $product = Product::find($request->param('id')); // Could be null
+    return success_response($product->toArray()); // Will crash if null
+}
+```
+
+#### ✅ **Proper Error Handling**
+```php
+// GOOD: Handle all error cases
+public function show(Request $request): Response
+{
+    try {
+        $id = (int) $request->param('id');
+        
+        if ($id <= 0) {
+            return error_response('Invalid ID', 'Product ID must be positive', 400);
+        }
+        
+        $product = Product::find($id);
+        
+        if (!$product) {
+            return error_response('Not found', 'Product not found', 404);
+        }
+        
+        return success_response($product->toArray());
+        
+    } catch (\Exception $e) {
+        return error_response(
+            'Server error',
+            app_debug() ? $e->getMessage() : 'Internal server error',
+            500
+        );
+    }
+}
+```
+
+### **6. Testing Mistakes**
+
+#### ❌ **No Tests**
+```php
+// BAD: No tests means broken features go unnoticed
+```
+
+#### ✅ **Write Tests for Critical Functions**
+```php
+// GOOD: Test important functionality
+public function testProductValidation()
+{
+    $invalidData = ['name' => '', 'price' => -10];
+    
+    $this->expectException(ValidationException::class);
+    Product::validateForCreation($invalidData);
+}
+```
+
+---
+
+**💡 Remember:** For comprehensive guidance with more examples and practical advice, check out our [Developer Guide](DEVELOPER_GUIDE.md)!
 
 This comprehensive documentation provides developers with everything they need to build robust, secure, and scalable REST APIs using the Apileon framework.
