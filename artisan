@@ -1,0 +1,381 @@
+#!/usr/bin/env php
+<?php
+
+// Database management CLI tool for Apileon
+
+// Try Composer autoloader first, fallback to manual autoloader
+if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+} else {
+    require_once __DIR__ . '/autoload.php';
+}
+
+use Apileon\Database\MigrationRunner;
+use Apileon\Database\DatabaseManager;
+
+// Load environment
+if (file_exists(__DIR__ . '/.env')) {
+    $lines = file(__DIR__ . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos($line, '=') !== false && $line[0] !== '#') {
+            list($key, $value) = explode('=', $line, 2);
+            $_ENV[trim($key)] = trim($value);
+        }
+    }
+}
+
+function showHelp() {
+    echo "Apileon Database Management Tool\n";
+    echo "================================\n\n";
+    echo "Usage: php artisan [command] [options]\n\n";
+    echo "Available commands:\n";
+    echo "  migrate              Run pending migrations\n";
+    echo "  migrate:rollback     Rollback last migration\n";
+    echo "  migrate:rollback N   Rollback N migrations\n";
+    echo "  migrate:refresh      Rollback all and re-run migrations\n";
+    echo "  migrate:status       Show migration status\n";
+    echo "  db:seed              Run database seeders\n";
+    echo "  db:fresh             Drop all tables and re-run migrations\n";
+    echo "  db:test              Test database connection\n";
+    echo "  make:migration NAME  Create a new migration file\n";
+    echo "  make:model NAME      Create a new model class\n";
+    echo "  make:controller NAME Create a new controller class\n";
+    echo "  serve                Start development server\n";
+    echo "  security:check       Run comprehensive security validation\n";
+    echo "  package:secure       Create secure deployment package\n";
+    echo "  help                 Show this help message\n\n";
+}
+
+function testConnection() {
+    echo "Testing database connection...\n";
+    
+    try {
+        $connection = DatabaseManager::getConnection();
+        $result = $connection->query('SELECT 1 as test')->fetch();
+        
+        if ($result && $result['test'] == 1) {
+            echo "✓ Database connection successful!\n";
+            
+            // Show database info
+            $dbConfig = require __DIR__ . '/config/database.php';
+            $defaultConnection = $dbConfig['default'];
+            $connectionConfig = $dbConfig['connections'][$defaultConnection];
+            
+            echo "Connection: {$defaultConnection}\n";
+            echo "Host: {$connectionConfig['host']}\n";
+            echo "Database: {$connectionConfig['database']}\n";
+        } else {
+            echo "✗ Database connection test failed\n";
+        }
+    } catch (Exception $e) {
+        echo "✗ Database connection failed: " . $e->getMessage() . "\n";
+        exit(1);
+    }
+}
+
+function createMigration($name) {
+    $timestamp = date('Y_m_d_His');
+    $className = 'Create' . ucfirst(camelCase($name)) . 'Table';
+    $filename = "{$timestamp}_create_{$name}_table.php";
+    $filepath = __DIR__ . "/database/migrations/{$filename}";
+    
+    $template = "<?php
+
+use Apileon\\Database\\Migration;
+
+class {$className} extends Migration
+{
+    public function up(): void
+    {
+        \$this->createTable('{$name}', function (\$table) {
+            \$table->id();
+            \$table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        \$this->dropTable('{$name}');
+    }
+}
+";
+
+    if (!is_dir(dirname($filepath))) {
+        mkdir(dirname($filepath), 0755, true);
+    }
+    
+    file_put_contents($filepath, $template);
+    echo "Created migration: {$filename}\n";
+}
+
+function createModel($name) {
+    $className = ucfirst(camelCase($name));
+    $tableName = strtolower($name) . 's';
+    $filepath = __DIR__ . "/app/Models/{$className}.php";
+    
+    $template = "<?php
+
+namespace App\\Models;
+
+class {$className} extends Model
+{
+    protected string \$table = '{$tableName}';
+    
+    protected array \$fillable = [
+        // Add fillable fields here
+    ];
+
+    protected array \$hidden = [
+        // Add hidden fields here
+    ];
+
+    protected array \$casts = [
+        // Add field casts here
+    ];
+}
+";
+
+    if (!is_dir(dirname($filepath))) {
+        mkdir(dirname($filepath), 0755, true);
+    }
+    
+    file_put_contents($filepath, $template);
+    echo "Created model: app/Models/{$className}.php\n";
+}
+
+function createController($name) {
+    $className = ucfirst(camelCase($name)) . 'Controller';
+    $filepath = __DIR__ . "/app/Controllers/{$className}.php";
+    
+    $template = "<?php
+
+namespace App\\Controllers;
+
+use Apileon\\Http\\Request;
+use Apileon\\Http\\Response;
+
+class {$className}
+{
+    public function index(Request \$request): Response
+    {
+        return Response::json([
+            'success' => true,
+            'data' => []
+        ]);
+    }
+
+    public function show(Request \$request): Response
+    {
+        \$id = \$request->param('id');
+        
+        return Response::json([
+            'success' => true,
+            'data' => ['id' => \$id]
+        ]);
+    }
+
+    public function store(Request \$request): Response
+    {
+        \$data = \$request->all();
+        
+        return Response::json([
+            'success' => true,
+            'message' => 'Created successfully',
+            'data' => \$data
+        ], 201);
+    }
+
+    public function update(Request \$request): Response
+    {
+        \$id = \$request->param('id');
+        \$data = \$request->all();
+        
+        return Response::json([
+            'success' => true,
+            'message' => 'Updated successfully',
+            'data' => \$data
+        ]);
+    }
+
+    public function destroy(Request \$request): Response
+    {
+        \$id = \$request->param('id');
+        
+        return Response::json([
+            'success' => true,
+            'message' => 'Deleted successfully'
+        ]);
+    }
+}
+";
+
+    if (!is_dir(dirname($filepath))) {
+        mkdir(dirname($filepath), 0755, true);
+    }
+    
+    file_put_contents($filepath, $template);
+    echo "Created controller: app/Controllers/{$className}.php\n";
+}
+
+function camelCase($str) {
+    return lcfirst(str_replace(' ', '', ucwords(str_replace('_', ' ', $str))));
+}
+
+function startServer() {
+    $host = '127.0.0.1';
+    $port = 8000;
+    $docroot = __DIR__ . '/public';
+    
+    echo "Starting Apileon development server...\n";
+    echo "Server running at: http://{$host}:{$port}\n";
+    echo "Document root: {$docroot}\n";
+    echo "Press Ctrl+C to stop\n\n";
+    
+    passthru("php -S {$host}:{$port} -t {$docroot}");
+}
+
+// Parse command line arguments
+$command = $argv[1] ?? 'help';
+$argument = $argv[2] ?? null;
+
+try {
+    switch ($command) {
+        case 'migrate':
+            $runner = new MigrationRunner();
+            $runner->migrate();
+            break;
+            
+        case 'migrate:rollback':
+            $steps = is_numeric($argument) ? (int)$argument : 1;
+            $runner = new MigrationRunner();
+            $runner->rollback($steps);
+            break;
+            
+        case 'migrate:refresh':
+            $runner = new MigrationRunner();
+            $runner->refresh();
+            break;
+            
+        case 'migrate:status':
+            $runner = new MigrationRunner();
+            $runner->status();
+            break;
+            
+        case 'db:seed':
+            $runner = new MigrationRunner();
+            $runner->seed();
+            break;
+            
+        case 'db:fresh':
+            echo "Dropping all tables and re-running migrations...\n";
+            $runner = new MigrationRunner();
+            $runner->refresh();
+            $runner->seed();
+            break;
+            
+        case 'db:test':
+            testConnection();
+            break;
+            
+        case 'make:migration':
+            if (!$argument) {
+                echo "Error: Migration name is required\n";
+                echo "Usage: php artisan make:migration table_name\n";
+                exit(1);
+            }
+            createMigration($argument);
+            break;
+            
+        case 'make:model':
+            if (!$argument) {
+                echo "Error: Model name is required\n";
+                echo "Usage: php artisan make:model ModelName\n";
+                exit(1);
+            }
+            createModel($argument);
+            break;
+            
+        case 'make:controller':
+            if (!$argument) {
+                echo "Error: Controller name is required\n";
+                echo "Usage: php artisan make:controller ControllerName\n";
+                exit(1);
+            }
+            createController($argument);
+            break;
+            
+        case 'security:check':
+            echo "🔐 Running security validation...\n";
+            
+            if (!file_exists(__DIR__ . '/src/Security/RuntimeValidator.php')) {
+                echo "❌ Security validator not found. Please run secure deployment first.\n";
+                exit(1);
+            }
+            
+            require_once __DIR__ . '/src/Security/RuntimeValidator.php';
+            
+            $securityKey = defined('APILEON_SECURITY_KEY') ? APILEON_SECURITY_KEY : null;
+            $validator = new \Apileon\Security\RuntimeValidator($securityKey);
+            $report = $validator->validate();
+            
+            echo "\n📊 Security Validation Report\n";
+            echo "================================\n";
+            echo "Status: " . strtoupper($report['status']) . "\n";
+            echo "Timestamp: " . $report['timestamp'] . "\n";
+            echo "Checks Performed: " . $report['checks_performed'] . "\n\n";
+            
+            if (!empty($report['errors'])) {
+                echo "🚨 SECURITY ERRORS (MUST FIX):\n";
+                foreach ($report['errors'] as $error) {
+                    echo "  ❌ $error\n";
+                }
+                echo "\n";
+            }
+            
+            if (!empty($report['warnings'])) {
+                echo "⚠️  SECURITY WARNINGS (RECOMMENDED):\n";
+                foreach ($report['warnings'] as $warning) {
+                    echo "  ⚠️  $warning\n";
+                }
+                echo "\n";
+            }
+            
+            if (empty($report['errors']) && empty($report['warnings'])) {
+                echo "✅ All security checks passed!\n\n";
+            }
+            
+            // Generate detailed report file
+            $reportPath = __DIR__ . '/storage/security-report.html';
+            $reportDir = dirname($reportPath);
+            if (!is_dir($reportDir)) {
+                mkdir($reportDir, 0755, true);
+            }
+            
+            file_put_contents($reportPath, $validator->getHtmlReport());
+            echo "📄 Detailed report saved to: $reportPath\n";
+            
+            exit(empty($report['errors']) ? 0 : 1);
+
+        case 'package:secure':
+            echo "📦 Creating secure deployment package...\n";
+            
+            if (!file_exists(__DIR__ . '/secure-deploy.php')) {
+                echo "❌ Secure deployment script not found.\n";
+                exit(1);
+            }
+            
+            // Run the secure deployment generator
+            system('php ' . __DIR__ . '/secure-deploy.php');
+            break;
+            startServer();
+            break;
+            
+        case 'help':
+        default:
+            showHelp();
+            break;
+    }
+} catch (Exception $e) {
+    echo "Error: " . $e->getMessage() . "\n";
+    exit(1);
+}

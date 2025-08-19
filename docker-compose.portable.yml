@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  apileon-portable:
+    build:
+      context: .
+      dockerfile: Dockerfile.portable
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./database:/app/database
+      - ./storage:/app/storage
+    environment:
+      - APP_ENV=portable
+      - APP_DEBUG=false
+      - DB_CONNECTION=sqlite
+      - DB_DATABASE=/app/database/apileon.sqlite
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    container_name: apileon-api
+
+networks:
+  default:
+    name: apileon-network

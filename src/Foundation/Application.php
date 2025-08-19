@@ -6,6 +6,7 @@ use Apileon\Http\Request;
 use Apileon\Http\Response;
 use Apileon\Routing\Router;
 use Apileon\Routing\Route;
+use Apileon\Database\DatabaseManager;
 
 class Application
 {
@@ -22,6 +23,7 @@ class Application
         
         $this->loadEnvironment();
         $this->loadConfiguration();
+        $this->initializeDatabase();
         $this->registerMiddleware();
     }
 
@@ -154,5 +156,15 @@ class Application
         $this->router->registerMiddleware('cors', \Apileon\Http\Middleware\CorsMiddleware::class);
         $this->router->registerMiddleware('auth', \Apileon\Http\Middleware\AuthMiddleware::class);
         $this->router->registerMiddleware('throttle', \Apileon\Http\Middleware\ThrottleMiddleware::class);
+    }
+
+    private function initializeDatabase(): void
+    {
+        // Initialize database connection if database config is available
+        $dbConfig = $this->config('database');
+        
+        if ($dbConfig) {
+            DatabaseManager::initialize($dbConfig);
+        }
     }
 }
