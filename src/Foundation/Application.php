@@ -7,6 +7,9 @@ use Apileon\Http\Response;
 use Apileon\Routing\Router;
 use Apileon\Routing\Route;
 use Apileon\Database\DatabaseManager;
+use Apileon\Support\PerformanceMonitor;
+use Apileon\Cache\CacheManager;
+use Apileon\Events\EventDispatcher;
 
 class Application
 {
@@ -23,19 +26,34 @@ class Application
         
         $this->loadEnvironment();
         $this->loadConfiguration();
+        $this->initializeCache();
         $this->initializeDatabase();
         $this->registerMiddleware();
+        $this->registerEventListeners();
     }
 
     public function run(): void
     {
+        PerformanceMonitor::startRequest();
+        
         if (!$this->booted) {
             $this->boot();
         }
 
         $request = new Request();
         $response = $this->router->dispatch($request);
+        
+        // Add performance metrics to response headers in debug mode
+        if ($this->isDebug()) {
+            $metrics = PerformanceMonitor::getFormattedMetrics();
+            $response->header('X-Performance-Time', $metrics['performance']['request_time_ms'] . 'ms');
+            $response->header('X-Performance-Memory', $metrics['performance']['memory_usage_mb'] . 'MB');
+            $response->header('X-Performance-Queries', (string)$metrics['performance']['database_queries']);
+        }
+        
         $response->send();
+        
+        PerformanceMonitor::endRequest();
     }
 
     public function boot(): void
@@ -166,5 +184,32 @@ class Application
         if ($dbConfig) {
             DatabaseManager::initialize($dbConfig);
         }
+    }
+
+    private function initializeCache(): void
+    {
+        $cacheConfig = $this->config('cache', [
+            'driver' => 'file',
+            'path' => $this->basePath('/storage/cache'),
+            'ttl' => 3600
+        ]);
+        
+        CacheManager::configure($cacheConfig);
+    }
+
+    private function registerEventListeners(): void
+    {
+        // Register default event listeners
+        EventDispatcher::listen('model.created', function($event, $data) {
+            if ($this->isDebug()) {
+                error_log("Model created: " . $data['model']);
+            }
+        });
+
+        EventDispatcher::listen('query.executed', function($event, $data) {
+            if ($this->isDebug() && $data['time'] > 100) { // Log slow queries (>100ms)
+                error_log("Slow query detected: " . $data['sql'] . " (" . $data['time'] . "ms)");
+            }
+        });
     }
 }

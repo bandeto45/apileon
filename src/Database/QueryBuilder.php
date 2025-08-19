@@ -5,6 +5,7 @@ namespace Apileon\Database;
 use PDO;
 use PDOStatement;
 use InvalidArgumentException;
+use Apileon\Support\PerformanceMonitor;
 
 class QueryBuilder
 {
@@ -324,6 +325,8 @@ class QueryBuilder
 
     protected function executeQuery(string $sql): PDOStatement
     {
+        $startTime = microtime(true);
+        
         try {
             $statement = $this->connection->prepare($sql);
             
@@ -332,8 +335,15 @@ class QueryBuilder
             }
 
             $statement->execute();
+            
+            $executionTime = (microtime(true) - $startTime) * 1000; // Convert to milliseconds
+            PerformanceMonitor::recordQueryTime($executionTime);
+            
             return $statement;
         } catch (\PDOException $e) {
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            PerformanceMonitor::recordQueryTime($executionTime);
+            
             throw new \RuntimeException("Query execution failed: " . $e->getMessage() . " | SQL: " . $sql);
         }
     }

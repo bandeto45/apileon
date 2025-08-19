@@ -27,6 +27,10 @@ Think of Apileon as the **enterprise-grade foundation** for your next API projec
 - 🚀 **Zero Dependencies** – works with just PHP 8.1+, no Composer required  
 - 🔧 **Auto-loading** – PSR-4 compliant autoloader included  
 - 🌐 **Production Ready** – enterprise-grade security and performance  
+- 📈 **Built-in Performance Monitoring** – track response times, memory usage, queries ⭐
+- 💾 **Flexible Caching System** – file, array, and Redis support ⭐
+- 🎯 **Event System** – decoupled architecture with custom events ⭐
+- 🔍 **Health Monitoring** – built-in health checks and metrics endpoints ⭐  
 
 ---
 
@@ -396,10 +400,13 @@ class PostController
 {
     public function index(Request $request): Response
     {
-        $posts = [
-            ['id' => 1, 'title' => 'First Post', 'content' => 'Hello World'],
-            ['id' => 2, 'title' => 'Second Post', 'content' => 'API Development']
-        ];
+        // Use caching for better performance
+        $posts = cache_remember('recent_posts', function() {
+            return [
+                ['id' => 1, 'title' => 'First Post', 'content' => 'Hello World'],
+                ['id' => 2, 'title' => 'Second Post', 'content' => 'API Development']
+            ];
+        }, 3600); // Cache for 1 hour
         
         return Response::json(['posts' => $posts]);
     }
@@ -432,6 +439,9 @@ class PostController
             ], 422);
         }
         
+        // Fire event for decoupled architecture
+        event('post.created', ['title' => $data['title']]);
+        
         return Response::json([
             'message' => 'Post created successfully',
             'post' => [
@@ -447,6 +457,46 @@ class PostController
 Route::get('/posts', 'App\Controllers\PostController@index');
 Route::get('/posts/{id}', 'App\Controllers\PostController@show');
 Route::post('/posts', 'App\Controllers\PostController@store');
+```
+
+### Performance Monitoring & Caching
+```php
+// Built-in performance monitoring
+$metrics = performance_metrics();
+// Returns: request time, memory usage, query count, cache hits
+
+// Flexible caching system
+cache('user_data', $userData, 3600); // Cache for 1 hour
+$userData = cache('user_data');       // Retrieve from cache
+
+// Cache expensive operations
+$result = cache_remember('expensive_query', function() {
+    return DB::table('large_table')->complexQuery()->get();
+}, 1800); // Cache for 30 minutes
+
+// Event-driven architecture
+listen('user.created', function($event, $data) {
+    // Send welcome email, update analytics, etc.
+});
+
+event('user.created', ['user_id' => 123, 'email' => 'user@example.com']);
+```
+
+### Health Monitoring
+```bash
+# Check API health and performance
+curl http://localhost:8000/health
+
+# Response includes performance metrics:
+{
+    "status": "ok",
+    "performance": {
+        "request_time_ms": 45.2,
+        "memory_usage_mb": 2.1,
+        "database_queries": 3,
+        "cache_hit_ratio": "87.5%"
+    }
+}
 ```
 
 ---

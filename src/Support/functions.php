@@ -212,3 +212,49 @@ if (!function_exists('verify_csrf_token')) {
         return isset($_SESSION['_token']) && hash_equals($_SESSION['_token'], $token);
     }
 }
+
+if (!function_exists('cache')) {
+    function cache(string $key = null, $value = null, int $ttl = null) {
+        $cache = \Apileon\Cache\CacheManager::getInstance();
+        
+        if ($key === null) {
+            return $cache;
+        }
+        
+        if ($value === null) {
+            return $cache->get($key);
+        }
+        
+        return $cache->set($key, $value, $ttl);
+    }
+}
+
+if (!function_exists('cache_remember')) {
+    function cache_remember(string $key, callable $callback, int $ttl = 3600) {
+        return \Apileon\Cache\CacheManager::remember($key, $callback, $ttl);
+    }
+}
+
+if (!function_exists('cache_forget')) {
+    function cache_forget(string $key): bool {
+        return \Apileon\Cache\CacheManager::delete($key);
+    }
+}
+
+if (!function_exists('event')) {
+    function event(string $event, array $data = []): array {
+        return \Apileon\Events\EventDispatcher::dispatch($event, $data);
+    }
+}
+
+if (!function_exists('listen')) {
+    function listen(string $event, callable $listener, int $priority = 0): void {
+        \Apileon\Events\EventDispatcher::listen($event, $listener, $priority);
+    }
+}
+
+if (!function_exists('performance_metrics')) {
+    function performance_metrics(): array {
+        return \Apileon\Support\PerformanceMonitor::getFormattedMetrics();
+    }
+}

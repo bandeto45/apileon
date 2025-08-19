@@ -18,6 +18,11 @@ Welcome to the comprehensive documentation for Apileon Framework! This index wil
 
 ---
 
+### **Enhanced Features (New!)**
+- **[🚀 Performance & Caching Guide](PERFORMANCE_CACHING_GUIDE.md)** ⭐ - Built-in performance monitoring and caching system
+- **[📊 Event System Guide](PERFORMANCE_CACHING_GUIDE.md#-event-system)** - Decoupled application architecture
+- **[💾 Cache Integration](PERFORMANCE_CACHING_GUIDE.md#-caching-system)** - Multiple cache drivers and strategies
+
 ## 📚 Core Framework Documentation
 
 ### Architecture & Design

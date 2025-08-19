@@ -48,3 +48,57 @@ Route::group(['middleware' => ['throttle']], function () {
         ];
     });
 });
+
+// Performance and health monitoring routes
+Route::get('/health', function () {
+    $metrics = performance_metrics();
+    
+    return [
+        'status' => 'ok',
+        'timestamp' => now(),
+        'version' => '1.0.0',
+        'environment' => env('APP_ENV', 'production'),
+        'performance' => $metrics['performance'] ?? []
+    ];
+});
+
+Route::get('/metrics', function () {
+    if (!app_debug()) {
+        return abort(403, 'Metrics endpoint only available in debug mode');
+    }
+    
+    return performance_metrics();
+});
+
+// Cache testing routes (debug only)
+Route::get('/cache/test', function () {
+    if (!app_debug()) {
+        return abort(403, 'Cache test only available in debug mode');
+    }
+    
+    $key = 'test_' . time();
+    $value = 'cached_value_' . rand(1000, 9999);
+    
+    cache($key, $value, 60);
+    $retrieved = cache($key);
+    
+    return [
+        'cache_set' => $value,
+        'cache_retrieved' => $retrieved,
+        'match' => $value === $retrieved
+    ];
+});
+
+// Event testing route (debug only)
+Route::get('/events/test', function () {
+    if (!app_debug()) {
+        return abort(403, 'Events test only available in debug mode');
+    }
+    
+    $results = event('test.event', ['message' => 'Hello from event system!']);
+    
+    return [
+        'event_fired' => 'test.event',
+        'results' => $results
+    ];
+});
