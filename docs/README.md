@@ -13,6 +13,7 @@
 9. [Error Handling](#error-handling)
 10. [Testing](#testing)
 11. [Deployment](#deployment)
+12. [Best Practices](#best-practices)
 
 ---
 
@@ -20,30 +21,41 @@
 
 Apileon is a lightweight PHP framework designed exclusively for REST API development. It provides a clean, simple API while maintaining enterprise-level capabilities.
 
+### Key Principles
+
+- **API-First**: Built exclusively for REST APIs, no unnecessary features
+- **Zero Dependencies**: Works with just PHP 8.1+, Composer optional
+- **Developer Friendly**: Intuitive syntax and comprehensive documentation
+- **Enterprise Ready**: Security, testing, and scalability built-in
+
 ### Requirements
 
-- PHP 8.1 or higher
-- Composer
-- Web server (Apache, Nginx, or PHP built-in server)
+- **PHP 8.1 or higher**
+- **Web server** (Apache, Nginx, or PHP built-in server)
+- **Composer** (optional - framework includes manual autoloader)
 
 ### Quick Setup
 
 ```bash
+# Option 1: With Composer
+composer create-project apileon/framework my-api
+
+# Option 2: Without Composer (just PHP!)
 git clone https://github.com/bandeto45/apileon.git my-api
 cd my-api
-./setup.sh
-composer serve
+./setup-no-composer.sh
+php -S localhost:8000 -t public
 ```
 
 ---
 
 ## Installation
 
-### Manual Installation
+### Option 1: With Composer (Recommended for Complex Projects)
 
-1. **Clone the repository:**
+1. **Create new project:**
    ```bash
-   git clone https://github.com/bandeto45/apileon.git my-api
+   composer create-project apileon/framework my-api
    cd my-api
    ```
 
@@ -60,14 +72,54 @@ composer serve
 
 4. **Start development server:**
    ```bash
+   composer serve
+   # or manually: php -S localhost:8000 -t public
+   ```
+
+### Option 2: Without Composer (Recommended for Simple Projects)
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/bandeto45/apileon.git my-api
+   cd my-api
+   ```
+
+2. **Run setup script:**
+   ```bash
+   ./setup-no-composer.sh
+   ```
+
+3. **Start development server:**
+   ```bash
    php -S localhost:8000 -t public
    ```
 
-### Automated Setup
+4. **Test the installation:**
+   ```bash
+   curl http://localhost:8000/hello
+   # Should return: {"message":"Hello from Apileon!"}
+   ```
 
-Use the provided setup script:
+### Manual Installation (Advanced)
+
+If you prefer complete control over the setup:
+
 ```bash
-./setup.sh
+# 1. Create project structure
+mkdir my-api && cd my-api
+mkdir -p {app/Controllers,app/Models,app/Middleware,config,public,routes,src,tests,docs,storage/{logs,cache,sessions}}
+
+# 2. Copy framework files (from Apileon repository)
+# - Copy all src/ files
+# - Copy autoload.php
+# - Copy public/index.php
+# - Copy example routes, controllers, etc.
+
+# 3. Setup environment
+cp .env.example .env
+
+# 4. Test framework
+php test-no-composer.php
 ```
 
 ---
@@ -687,4 +739,376 @@ composer require illuminate/database
 composer require doctrine/orm
 ```
 
-This documentation provides a comprehensive guide to building REST APIs with the Apileon framework. For more examples and advanced usage, check the example controllers and test files in the project.
+## Best Practices
+
+### 1. Project Organization
+
+**Controller Organization:**
+```php
+// Good: Logical grouping
+app/Controllers/
+├── Api/
+│   ├── V1/
+│   │   ├── UserController.php
+│   │   └── PostController.php
+│   └── V2/
+│       └── UserController.php
+├── Auth/
+│   ├── LoginController.php
+│   └── RegisterController.php
+└── Admin/
+    └── DashboardController.php
+```
+
+**Route Organization:**
+```php
+// routes/api.php - Keep related routes together
+Route::group(['prefix' => 'api/v1'], function() {
+    // User management
+    Route::group(['prefix' => 'users'], function() {
+        Route::get('/', 'UserController@index');
+        Route::post('/', 'UserController@store');
+        Route::get('/{id}', 'UserController@show');
+        Route::put('/{id}', 'UserController@update');
+        Route::delete('/{id}', 'UserController@destroy');
+    });
+    
+    // Posts
+    Route::group(['prefix' => 'posts'], function() {
+        Route::get('/', 'PostController@index');
+        Route::post('/', 'PostController@store')->middleware('auth');
+    });
+});
+```
+
+### 2. API Design Principles
+
+**RESTful URLs:**
+```php
+// Good
+GET    /api/users           # List users
+GET    /api/users/123       # Show user
+POST   /api/users           # Create user
+PUT    /api/users/123       # Update user
+DELETE /api/users/123       # Delete user
+
+// Avoid
+GET    /api/get-users
+POST   /api/create-user
+GET    /api/user-details/123
+```
+
+**Consistent Response Format:**
+```php
+// Success responses
+return Response::json([
+    'success' => true,
+    'data' => $result,
+    'meta' => [
+        'total' => 100,
+        'page' => 1,
+        'per_page' => 10
+    ]
+]);
+
+// Error responses
+return Response::json([
+    'success' => false,
+    'error' => 'Validation failed',
+    'message' => 'The given data was invalid',
+    'errors' => [
+        'email' => ['Email is required', 'Email must be valid']
+    ]
+], 422);
+```
+
+### 3. Security Best Practices
+
+**Input Validation:**
+```php
+public function store(Request $request): Response
+{
+    $data = $request->all();
+    
+    // Validate required fields
+    $errors = [];
+    
+    if (empty($data['email'])) {
+        $errors['email'][] = 'Email is required';
+    } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+        $errors['email'][] = 'Email must be valid';
+    }
+    
+    if (empty($data['name'])) {
+        $errors['name'][] = 'Name is required';
+    } elseif (strlen($data['name']) < 2) {
+        $errors['name'][] = 'Name must be at least 2 characters';
+    }
+    
+    if (!empty($errors)) {
+        return Response::json([
+            'error' => 'Validation failed',
+            'errors' => $errors
+        ], 422);
+    }
+    
+    // Process valid data...
+}
+```
+
+**Authentication Best Practices:**
+```php
+// Use middleware for protection
+Route::group(['middleware' => ['auth']], function() {
+    Route::get('/sensitive-data', 'DataController@show');
+});
+
+// Validate tokens properly
+class AuthMiddleware extends Middleware
+{
+    public function handle(Request $request, callable $next): Response
+    {
+        $token = $request->bearerToken();
+        
+        if (!$token) {
+            return $this->unauthorizedResponse('Token required');
+        }
+        
+        // Validate token format
+        if (!$this->isValidTokenFormat($token)) {
+            return $this->unauthorizedResponse('Invalid token format');
+        }
+        
+        // Check token in database/cache
+        if (!$this->tokenExists($token)) {
+            return $this->unauthorizedResponse('Invalid token');
+        }
+        
+        // Check token expiration
+        if ($this->isTokenExpired($token)) {
+            return $this->unauthorizedResponse('Token expired');
+        }
+        
+        return $next($request);
+    }
+    
+    private function unauthorizedResponse(string $message): Response
+    {
+        return $this->response()->json([
+            'error' => 'Unauthorized',
+            'message' => $message
+        ], 401);
+    }
+}
+```
+
+### 4. Performance Optimization
+
+**Response Caching:**
+```php
+class CacheMiddleware extends Middleware
+{
+    public function handle(Request $request, callable $next): Response
+    {
+        // Only cache GET requests
+        if ($request->method() !== 'GET') {
+            return $next($request);
+        }
+        
+        $cacheKey = 'api_' . md5($request->uri() . serialize($request->query()));
+        
+        // Check cache
+        if ($cachedResponse = $this->getFromCache($cacheKey)) {
+            return $cachedResponse->header('X-Cache', 'HIT');
+        }
+        
+        $response = $next($request);
+        
+        // Cache successful responses
+        if ($response->getStatusCode() === 200) {
+            $this->putInCache($cacheKey, $response, 300); // 5 minutes
+            $response->header('X-Cache', 'MISS');
+        }
+        
+        return $response;
+    }
+}
+```
+
+**Database Query Optimization:**
+```php
+// Good: Specific queries
+public function index(Request $request): Response
+{
+    $page = (int) $request->query('page', 1);
+    $limit = (int) $request->query('limit', 10);
+    $limit = min($limit, 100); // Cap at 100
+    
+    $offset = ($page - 1) * $limit;
+    
+    // Only select needed fields
+    $users = $this->db->query(
+        "SELECT id, name, email, created_at FROM users LIMIT ? OFFSET ?",
+        [$limit, $offset]
+    );
+    
+    return Response::json([
+        'data' => $users,
+        'meta' => [
+            'page' => $page,
+            'per_page' => $limit,
+            'total' => $this->getUserCount()
+        ]
+    ]);
+}
+```
+
+### 5. Error Handling
+
+**Consistent Error Responses:**
+```php
+// Create a base controller with error handling
+abstract class BaseController
+{
+    protected function errorResponse(string $message, int $code = 400, array $errors = []): Response
+    {
+        $response = [
+            'success' => false,
+            'error' => $this->getErrorTitle($code),
+            'message' => $message
+        ];
+        
+        if (!empty($errors)) {
+            $response['errors'] = $errors;
+        }
+        
+        return Response::json($response, $code);
+    }
+    
+    protected function successResponse($data = null, string $message = null): Response
+    {
+        $response = ['success' => true];
+        
+        if ($message) {
+            $response['message'] = $message;
+        }
+        
+        if ($data !== null) {
+            $response['data'] = $data;
+        }
+        
+        return Response::json($response);
+    }
+    
+    private function getErrorTitle(int $code): string
+    {
+        return match($code) {
+            400 => 'Bad Request',
+            401 => 'Unauthorized',
+            403 => 'Forbidden',
+            404 => 'Not Found',
+            422 => 'Validation Error',
+            429 => 'Too Many Requests',
+            500 => 'Internal Server Error',
+            default => 'Error'
+        };
+    }
+}
+```
+
+### 6. Testing Strategy
+
+**Test Structure:**
+```php
+// tests/Feature/UserApiTest.php
+class UserApiTest extends TestCase
+{
+    public function testCreateUser()
+    {
+        $userData = [
+            'name' => 'John Doe',
+            'email' => 'john@example.com'
+        ];
+        
+        $response = $this->post('/api/users', $userData);
+        
+        $this->assertEquals(201, $response['status']);
+        $this->assertEquals('User created successfully', $response['body']['message']);
+        $this->assertArrayHasKey('data', $response['body']);
+    }
+    
+    public function testCreateUserValidation()
+    {
+        $response = $this->post('/api/users', ['name' => '']); // Invalid data
+        
+        $this->assertEquals(422, $response['status']);
+        $this->assertEquals('Validation failed', $response['body']['error']);
+        $this->assertArrayHasKey('errors', $response['body']);
+    }
+}
+```
+
+**Environment-Based Testing:**
+```php
+// tests/TestCase.php
+abstract class TestCase extends PHPUnit\Framework\TestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+        
+        // Set test environment
+        $_ENV['APP_ENV'] = 'testing';
+        $_ENV['APP_DEBUG'] = 'true';
+        
+        $this->resetGlobals();
+    }
+    
+    protected function resetGlobals(): void
+    {
+        $_SERVER = [];
+        $_GET = [];
+        $_POST = [];
+        $_REQUEST = [];
+    }
+}
+```
+
+### 7. Deployment Guidelines
+
+**Production Configuration:**
+```env
+# .env (production)
+APP_ENV=production
+APP_DEBUG=false
+APP_KEY=your-super-secure-production-key
+
+# Secure database settings
+DB_HOST=secure-db-host
+DB_USERNAME=limited-user
+DB_PASSWORD=complex-secure-password
+
+# Logging
+LOG_LEVEL=warning
+```
+
+**Security Headers:**
+```php
+// Add to your middleware or base controller
+class SecurityHeadersMiddleware extends Middleware
+{
+    public function handle(Request $request, callable $next): Response
+    {
+        $response = $next($request);
+        
+        return $response
+            ->header('X-Content-Type-Options', 'nosniff')
+            ->header('X-Frame-Options', 'DENY')
+            ->header('X-XSS-Protection', '1; mode=block')
+            ->header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+            ->header('Content-Security-Policy', "default-src 'self'");
+    }
+}
+```
+
+This comprehensive documentation provides developers with everything they need to build robust, secure, and scalable REST APIs using the Apileon framework.

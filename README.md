@@ -19,37 +19,49 @@ Think of Apileon as the **enterprise-grade foundation** for your next API projec
 ## ✨ Features
 - ⚡ **REST-first architecture** – built only for APIs, no bloat  
 - 🛠 **Simple Routing** – clean and fast endpoint definitions  
-- 🔐 **Middleware Support** – authentication, logging, rate limiting  
+- 🔐 **Middleware Support** – authentication, CORS, rate limiting  
 - 📦 **Extensible Core** – modular design for enterprise projects  
 - 📊 **JSON-first Communication** – optimized for modern web & mobile apps  
 - 🧪 **Test-Friendly** – structured for PHPUnit & CI/CD pipelines  
+- 🚀 **Zero Dependencies** – works with just PHP 8.1+, no Composer required  
+- 🔧 **Auto-loading** – PSR-4 compliant autoloader included  
+- 🌐 **Production Ready** – enterprise-grade security and performance  
 
 ---
 
 ## 📦 Installation
-You can install Apileon via **Composer** (coming soon):
 
+### Option 1: With Composer (Recommended)
 ```bash
 composer create-project apileon/framework my-api
 ```
 
-Or clone and setup manually:
-
+### Option 2: Without Composer (Simple Setup)
 ```bash
 git clone https://github.com/bandeto45/apileon.git my-api
 cd my-api
-./setup.sh
+./setup-no-composer.sh
 ```
+
+**No dependencies required!** - Apileon works with just PHP 8.1+
 
 ---
 
 ## 🛠 Quick Start
 
-**1. Clone and setup**
+### With Composer
+```bash
+composer create-project apileon/framework my-api
+cd my-api
+composer serve
+```
+
+### Without Composer (Just PHP!)
 ```bash
 git clone https://github.com/bandeto45/apileon.git my-api
 cd my-api
-./setup.sh
+./setup-no-composer.sh
+php -S localhost:8000 -t public
 ```
 
 **2. Define your first route**  
@@ -62,10 +74,12 @@ Route::get('/hello', function () {
 });
 ```
 
-**3. Start the built-in server**
+**3. Start the server**
 ```bash
+# With Composer
 composer serve
-# or manually:
+
+# Without Composer  
 php -S localhost:8000 -t public
 ```
 
@@ -85,6 +99,7 @@ Response:
 ## 📂 Project Structure
 ```
 my-api/
+├── autoload.php            # Manual autoloader (no Composer needed)
 ├── app/                    # Application logic
 │   ├── Controllers/        # HTTP controllers
 │   ├── Models/            # Data models
@@ -93,23 +108,31 @@ my-api/
 │   ├── app.php           # App configuration
 │   └── database.php      # Database configuration
 ├── docs/                  # Documentation
-│   └── API.md            # API documentation
+│   ├── README.md         # Complete framework guide
+│   ├── API.md            # API documentation
+│   ├── routing.md        # Routing guide
+│   ├── middleware.md     # Middleware guide
+│   ├── testing.md        # Testing guide
+│   └── no-composer-setup.md # No-Composer setup
 ├── public/               # Public web root
-│   └── index.php         # Entry point
+│   ├── index.php         # Smart entry point (Composer + manual)
+│   └── index-no-composer.php # Explicit no-Composer entry
 ├── routes/               # Route definitions
 │   └── api.php           # API routes
 ├── src/                  # Framework core
 │   ├── Foundation/       # Application foundation
-│   ├── Http/            # HTTP components
+│   ├── Http/            # HTTP components & middleware
 │   ├── Routing/         # Routing system
-│   └── Support/         # Helper utilities
+│   └── Support/         # Helper utilities & functions
 ├── tests/               # PHPUnit tests
-├── vendor/              # Composer dependencies
+├── vendor/              # Composer dependencies (optional)
 ├── .env.example         # Environment template
-├── composer.json        # Dependencies & autoloading
+├── composer.json        # Dependencies & autoloading (optional)
 ├── phpunit.xml          # Testing configuration
-├── setup.sh            # Setup script
-└── status.sh           # Status check script
+├── setup.sh            # Composer setup script
+├── setup-no-composer.sh # No-Composer setup script
+├── status.sh           # Status check script
+└── test-no-composer.php # Framework test (no dependencies)
 ```
 
 ---
@@ -155,15 +178,265 @@ Route::get('/profile', 'UserController@profile')->middleware('auth');
 ---
 
 ## 🧪 Testing
-Run PHPUnit tests:
+
+### With Composer (Full Testing)
 ```bash
-vendor/bin/phpunit
+# Run all tests
+composer test
+
+# Run specific test
+vendor/bin/phpunit tests/RequestTest.php
+
+# Generate coverage report
+vendor/bin/phpunit --coverage-html coverage/
+```
+
+### Without Composer (Basic Testing)
+```bash
+# Test framework functionality
+php test-no-composer.php
+
+# Manual syntax check
+find . -name "*.php" -exec php -l {} \;
 ```
 
 ---
 
 ## 📖 Documentation
-Full documentation available at: [apileon.dev/docs](https://apileon.dev/docs) *(placeholder link)*
+Full documentation available in the `docs/` folder:
+- **[Complete Guide](docs/README.md)** - Framework documentation
+- **[No Composer Setup](docs/no-composer-setup.md)** - Use without Composer
+- **[API Reference](docs/API.md)** - Endpoint documentation  
+- **[Routing Guide](docs/routing.md)** - Advanced routing patterns
+- **[Middleware Guide](docs/middleware.md)** - Security & custom middleware
+- **[Testing Guide](docs/testing.md)** - Unit & integration testing
+
+---
+
+## 🚀 Quick Examples
+
+### Create a Simple API
+```php
+// routes/api.php
+use Apileon\Routing\Route;
+
+Route::get('/users', function() {
+    return [
+        'users' => [
+            ['id' => 1, 'name' => 'John Doe', 'email' => 'john@example.com'],
+            ['id' => 2, 'name' => 'Jane Smith', 'email' => 'jane@example.com']
+        ],
+        'total' => 2
+    ];
+});
+
+Route::get('/users/{id}', function($request) {
+    $id = $request->param('id');
+    return [
+        'user' => [
+            'id' => $id,
+            'name' => 'User ' . $id,
+            'email' => "user{$id}@example.com"
+        ]
+    ];
+});
+
+Route::post('/users', function($request) {
+    $data = $request->all();
+    return [
+        'message' => 'User created successfully',
+        'user' => [
+            'id' => rand(100, 999),
+            'name' => $data['name'] ?? 'Unknown',
+            'email' => $data['email'] ?? 'unknown@example.com'
+        ]
+    ];
+});
+```
+
+### Add Authentication
+```php
+// Protected routes
+Route::group(['middleware' => ['auth']], function() {
+    Route::get('/profile', function($request) {
+        return ['user' => ['id' => 1, 'name' => 'Authenticated User']];
+    });
+    
+    Route::put('/profile', function($request) {
+        return ['message' => 'Profile updated', 'data' => $request->all()];
+    });
+});
+
+// Usage: curl -H "Authorization: Bearer your-token" http://localhost:8000/profile
+```
+
+### Custom Controller
+```php
+// app/Controllers/PostController.php
+<?php
+namespace App\Controllers;
+
+use Apileon\Http\Request;
+use Apileon\Http\Response;
+
+class PostController
+{
+    public function index(Request $request): Response
+    {
+        $posts = [
+            ['id' => 1, 'title' => 'First Post', 'content' => 'Hello World'],
+            ['id' => 2, 'title' => 'Second Post', 'content' => 'API Development']
+        ];
+        
+        return Response::json(['posts' => $posts]);
+    }
+    
+    public function show(Request $request): Response
+    {
+        $id = $request->param('id');
+        
+        if (!is_numeric($id)) {
+            return abort(400, 'Invalid post ID');
+        }
+        
+        return Response::json([
+            'post' => [
+                'id' => $id,
+                'title' => "Post {$id}",
+                'content' => 'This is post content'
+            ]
+        ]);
+    }
+    
+    public function store(Request $request): Response
+    {
+        $data = $request->all();
+        
+        if (empty($data['title'])) {
+            return Response::json([
+                'error' => 'Validation failed',
+                'message' => 'Title is required'
+            ], 422);
+        }
+        
+        return Response::json([
+            'message' => 'Post created successfully',
+            'post' => [
+                'id' => rand(100, 999),
+                'title' => $data['title'],
+                'content' => $data['content'] ?? ''
+            ]
+        ], 201);
+    }
+}
+
+// routes/api.php
+Route::get('/posts', 'App\Controllers\PostController@index');
+Route::get('/posts/{id}', 'App\Controllers\PostController@show');
+Route::post('/posts', 'App\Controllers\PostController@store');
+```
+
+---
+
+## 🔧 Configuration Examples
+
+### Environment Variables (.env)
+```env
+# Application
+APP_ENV=local
+APP_DEBUG=true
+APP_KEY=your-secret-key-here
+APP_URL=http://localhost:8000
+
+# Database (if using external DB)
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=apileon_db
+DB_USERNAME=root
+DB_PASSWORD=secret
+
+# Cache & Sessions
+CACHE_DRIVER=file
+SESSION_DRIVER=file
+
+# Logging
+LOG_CHANNEL=single
+LOG_LEVEL=debug
+```
+
+### Custom Middleware
+```php
+// app/Middleware/JsonOnlyMiddleware.php
+<?php
+namespace App\Middleware;
+
+use Apileon\Http\Middleware;
+use Apileon\Http\Request;
+use Apileon\Http\Response;
+
+class JsonOnlyMiddleware extends Middleware
+{
+    public function handle(Request $request, callable $next): Response
+    {
+        // Only accept JSON for POST/PUT/PATCH
+        if (in_array($request->method(), ['POST', 'PUT', 'PATCH']) && !$request->isJson()) {
+            return $this->response()->json([
+                'error' => 'Bad Request',
+                'message' => 'This endpoint only accepts JSON requests'
+            ], 400);
+        }
+        
+        $response = $next($request);
+        
+        // Ensure JSON response
+        $response->header('Content-Type', 'application/json');
+        
+        return $response;
+    }
+}
+
+// Register and use
+$app->getRouter()->registerMiddleware('json', JsonOnlyMiddleware::class);
+Route::post('/api/data', 'DataController@store')->middleware('json');
+```
+
+---
+
+## 🌟 Why Choose Apileon?
+
+### ✅ **Simplicity**
+- **Zero configuration** - Works out of the box
+- **Intuitive API** - Easy to learn and use
+- **Clear documentation** - Comprehensive guides and examples
+
+### ✅ **Flexibility**
+- **Composer optional** - Use with or without dependency management
+- **Modular design** - Add only what you need
+- **Extensible** - Easy to customize and extend
+
+### ✅ **Performance**
+- **Lightweight core** - Minimal overhead
+- **Fast routing** - Optimized for speed
+- **JSON-first** - Built for modern APIs
+
+### ✅ **Enterprise Ready**
+- **Security built-in** - CORS, authentication, rate limiting
+- **Test-friendly** - Comprehensive testing support
+- **Production ready** - Battle-tested architecture
+
+---
+
+## 📋 Comparison
+
+| Feature | Apileon | Laravel | Slim | Lumen |
+|---------|---------|---------|------|-------|
+| **Size** | Tiny | Large | Small | Medium |
+| **Dependencies** | Optional | Required | Required | Required |
+| **API Focus** | ✅ Exclusive | ❌ Full-stack | ✅ Yes | ✅ Yes |
+| **Learning Curve** | Easy | Steep | Medium | Medium |
+| **Setup Time** | < 1 min | 5-10 min | 2-5 min | 2-5 min |
+| **No Composer** | ✅ Yes | ❌ No | ❌ No | ❌ No |
 
 ---
 
