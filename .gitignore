@@ -1,0 +1,11 @@
+/vendor/
+/node_modules/
+/.env
+/.phpunit.cache/
+/storage/logs/*.log
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+*.swo
+*~
